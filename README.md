@@ -35,6 +35,16 @@ cd tekton
 ./install-tekton.sh
 ```
 
+This will install the Tekton operator and will manage all 
+Tekton components like specified in the `tekton/tekton-config.yaml`.
+Some components like triggers are deactivated there as we don't need them in this showcase.
+
+Optional: forward the Tekton dashboard to see build logs etc. in the browser:
+```bash
+kubectl port-forward service/tekton-dashboard 9097:9097 -n tekton-pipelines
+```
+You can then open the app in your browser: http://localhost:9097
+
 ### 2. Configure Credentials
 Copy the `.env.template` to `.env` and fill in your private registry credentials.
 The Account you use should have:
@@ -59,6 +69,12 @@ cd tekton/go-webapp
 ./build-app.sh
 ```
 The script will follow the logs of the build and deployment process for easy debugging.
+
+Once the deployment is finished, you can access your webapp by port-forwarding the service:
+```bash
+kubectl port-forward service/go-webapp-service 8080:80
+```
+Then open: http://localhost:8080
 
 ## Security Note
 This repository uses **Rootless Buildah** with `vfs` storage and `chroot` isolation. To work correctly on restricted environments like GKE, the `TaskRun` uses `Unconfined` Seccomp and AppArmor profiles to allow the necessary filesystem operations without requiring a privileged container.

@@ -1,0 +1,157 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-go-app
+spec:
+  workspaces:
+    - name: source
+      description: The workspace where the build will happen
+  params:
+    - name: configmap-name
+      description: The name of the configmap containing the source code
+      default: "go-app-source"
+  steps:
+    - name: fetch-source
+      image: alpine:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -e
+        if [ -d /mnt/configmap ]; then
+          cp -RL /mnt/configmap/* .
+          echo "Source code copied successfully."
+        else
+          echo "❌ Error: ConfigMap not found at /mnt/configmap!"
+          exit 1
+        fi
+      volumeMounts:
+        - name: source-configmap
+          mountPath: /mnt/configmap
+    - name: build
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      env:
+        - name: STORAGE_DRIVER
+          value: vfs
+        - name: BUILDAH_ISOLATION
+          value: chroot
+        - name: HOME
+          value: /home/build
+        - name: CONTAINERS_STORAGE_CONF
+          value: /var/lib/containers/storage.conf
+        - name: REGISTRY_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_SERVER
+        - name: REGISTRY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_USERNAME
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_PASSWORD
+        - name: REGISTRY_IMAGE_URL
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_IMAGE_URL
+      script: |
+        #!/bin/sh
+        set -e
+        
+        # Create a custom storage.conf that points to writable directories
+        cat <<EOF > /var/lib/containers/storage.conf
+        [storage]
+        driver = "vfs"
+        runroot = "/var/lib/containers/runroot"
+        graphroot = "/var/lib/containers/storage"
+        [storage.options]
+        additionalimagestores = []
+        [storage.options.vfs]
+        ignore_chown_errors = "true"
+        EOF
+
+        echo "Logging into registry $REGISTRY_SERVER..."
+        buildah login -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD" "$REGISTRY_SERVER"
+        
+        echo "Building the image with Buildah..."
+        buildah bud --format=docker --isolation=chroot -t "$REGISTRY_IMAGE_URL" -f Dockerfile .
+        
+        echo "Pushing the image to $REGISTRY_IMAGE_URL..."
+        buildah push "$REGISTRY_IMAGE_URL"
+        
+        echo "✅ Build and push completed successfully!"
+      volumeMounts:
+        - name: buildah-storage
+          mountPath: /var/lib/containers
+    - name: deploy
+      image: gcr.io/cloud-builders/kubectl:latest
+      env:
+        - name: REGISTRY_IMAGE_URL
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_IMAGE_URL
+      script: |
+        #!/bin/sh
+        set -e
+        echo "Deploying $REGISTRY_IMAGE_URL to Kubernetes..."
+        
+        cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: go-webapp
+          namespace: default
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: go-webapp
+          template:
+            metadata:
+              labels:
+                app: go-webapp
+            spec:
+              imagePullSecrets:
+                - name: registry-pull-secret
+              containers:
+                - name: webapp
+                  image: ${REGISTRY_IMAGE_URL}
+                  ports:
+                    - containerPort: 8080
+                  # Force pull to ensure latest changes are deployed
+                  imagePullPolicy: Always
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: go-webapp-service
+          namespace: default
+        spec:
+          selector:
+            app: go-webapp
+          ports:
+            - protocol: TCP
+              port: 80
+              targetPort: 8080
+          type: ClusterIP
+        EOF
+        
+        echo "Waiting for deployment rollout..."
+        kubectl rollout status deployment/go-webapp -n default --timeout=60s
+        echo "✅ Deployment successful!"
+  volumes:
+    - name: buildah-storage
+      emptyDir: {}
+    - name: source-configmap
+      configMap:
+        name: $(params.configmap-name)
+        optional: true

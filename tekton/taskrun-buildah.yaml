@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: build-go-app-run-
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/step-build: unconfined
+spec:
+  serviceAccountName: build-deployer
+  podTemplate:
+    securityContext:
+      seccompProfile:
+        type: Unconfined
+  taskRef:
+    name: build-go-app
+  workspaces:
+    - name: source
+      emptyDir: {}
+  params:
+    - name: configmap-name
+      value: "go-app-source"

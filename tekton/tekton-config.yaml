@@ -1,0 +1,15 @@
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonConfig
+metadata:
+  name: config
+spec:
+  profile: all
+  targetNamespace: tekton-pipelines
+  dashboard:
+    readonly: false
+  pruner:
+    resources:
+      - taskrun
+      - pipelinerun
+    keep: 50
+    schedule: "0 0 * * *"

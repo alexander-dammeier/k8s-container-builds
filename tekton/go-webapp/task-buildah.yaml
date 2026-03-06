@@ -7,29 +7,28 @@ spec:
     - name: source
       description: The workspace where the build will happen
   params:
-    - name: configmap-name
-      description: The name of the configmap containing the source code
-      default: "go-app-source"
+    - name: git-url
+      description: The URL of the git repository
+      type: string
+    - name: git-revision
+      description: The revision/branch to build
+      default: "main"
+      type: string
   steps:
     - name: fetch-source
-      image: alpine:latest
+      image: alpine/git:latest
       workingDir: $(workspaces.source.path)
       script: |
         #!/bin/sh
         set -e
-        if [ -d /mnt/configmap ]; then
-          cp -RL /mnt/configmap/* .
-          echo "Source code copied successfully."
-        else
-          echo "❌ Error: ConfigMap not found at /mnt/configmap!"
-          exit 1
-        fi
-      volumeMounts:
-        - name: source-configmap
-          mountPath: /mnt/configmap
+        echo "Cloning repository $(params.git-url) @ $(params.git-revision)..."
+        git clone --branch "$(params.git-revision)" "$(params.git-url)" /tmp/source
+        cp -R /tmp/source/* .
+        echo "Repository cloned successfully."
+        ls -la
     - name: build
       image: quay.io/buildah/stable:latest
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)/go-webapp
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -93,7 +92,7 @@ spec:
           mountPath: /var/lib/containers
     - name: deploy
       image: gcr.io/cloud-builders/kubectl:latest
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)/go-webapp
       env:
         - name: REGISTRY_IMAGE_URL
           valueFrom:
@@ -117,7 +116,3 @@ spec:
   volumes:
     - name: buildah-storage
       emptyDir: {}
-    - name: source-configmap
-      configMap:
-        name: $(params.configmap-name)
-        optional: true

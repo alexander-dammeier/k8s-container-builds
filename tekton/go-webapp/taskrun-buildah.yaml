@@ -16,5 +16,7 @@ spec:
     - name: source
       emptyDir: {}
   params:
-    - name: configmap-name
-      value: "go-app-source"
+    - name: git-url
+      value: "https://github.com/alexander-dammeier/k8s-container-builds.git"
+    - name: git-revision
+      value: "main"

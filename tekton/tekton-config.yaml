@@ -7,6 +7,15 @@ spec:
   targetNamespace: tekton-pipelines
   dashboard:
     readonly: false
+  # Disable Results (removes Postgres and Results API)
+  result:
+    disabled: true
+  # Disable Chains (removes security signing controller)
+  chain:
+    disabled: true
+  # Disable Triggers (removes event listener controllers)
+  trigger:
+    disabled: true
   pruner:
     resources:
       - taskrun

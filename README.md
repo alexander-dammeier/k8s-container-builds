@@ -12,8 +12,8 @@ This way, build pipelines can stay in the cluster:
 - `kubectl` and `helm` installed and configured to your cluster
 
 ## Structure
-- `/go`: A sample Go web application with a multi-stage Dockerfile.
-- `/tekton`: Tekton installation and Task definitions.
+- `/go-webapp`: A sample Go web application with a multi-stage Dockerfile.
+- `/tekton`: Tekton installation and sub-directories for app-specific tasks (e.g., `/tekton/go-webapp`).
 - `/cluster-setup`: Global cluster configuration (RBAC, Secrets).
 
 ## Quickstart
@@ -43,7 +43,7 @@ cd cluster-setup
 ### 4. Build and Deploy
 Trigger the Tekton pipeline to build your Go app and deploy it to the cluster:
 ```bash
-cd tekton
+cd tekton/go-webapp
 ./build-app.sh
 ```
 The script will follow the logs of the build and deployment process.

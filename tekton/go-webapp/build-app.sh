@@ -4,7 +4,7 @@ set -e
 
 echo "📦 Re-creating the ConfigMap with the source code..."
 kubectl delete configmap go-app-source -n default --ignore-not-found
-kubectl create configmap go-app-source -n default --from-file=../go/
+kubectl create configmap go-app-source -n default --from-file=../../go-webapp/
 
 echo "📦 Applying the Tekton Task..."
 kubectl apply -f task-buildah.yaml -n default

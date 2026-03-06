@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-webapp
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-webapp
+  template:
+    metadata:
+      labels:
+        app: go-webapp
+    spec:
+      imagePullSecrets:
+        - name: registry-pull-secret
+      containers:
+        - name: webapp
+          image: REGISTRY_IMAGE_URL
+          ports:
+            - containerPort: 8080
+          # Force pull to ensure latest changes are deployed
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-webapp-service
+  namespace: default
+spec:
+  selector:
+    app: go-webapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

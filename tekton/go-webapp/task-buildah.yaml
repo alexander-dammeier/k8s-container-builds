@@ -93,6 +93,7 @@ spec:
           mountPath: /var/lib/containers
     - name: deploy
       image: gcr.io/cloud-builders/kubectl:latest
+      workingDir: $(workspaces.source.path)
       env:
         - name: REGISTRY_IMAGE_URL
           valueFrom:
@@ -104,46 +105,11 @@ spec:
         set -e
         echo "Deploying $REGISTRY_IMAGE_URL to Kubernetes..."
         
-        cat <<EOF | kubectl apply -f -
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: go-webapp
-          namespace: default
-        spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: go-webapp
-          template:
-            metadata:
-              labels:
-                app: go-webapp
-            spec:
-              imagePullSecrets:
-                - name: registry-pull-secret
-              containers:
-                - name: webapp
-                  image: ${REGISTRY_IMAGE_URL}
-                  ports:
-                    - containerPort: 8080
-                  # Force pull to ensure latest changes are deployed
-                  imagePullPolicy: Always
-        ---
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: go-webapp-service
-          namespace: default
-        spec:
-          selector:
-            app: go-webapp
-          ports:
-            - protocol: TCP
-              port: 80
-              targetPort: 8080
-          type: ClusterIP
-        EOF
+        # Replace the placeholder in the deployment manifest
+        sed -i "s|REGISTRY_IMAGE_URL|$REGISTRY_IMAGE_URL|g" k8s.yaml
+        
+        # Apply the manifests from the workspace
+        kubectl apply -f k8s.yaml
         
         echo "Waiting for deployment rollout..."
         kubectl rollout status deployment/go-webapp -n default --timeout=60s

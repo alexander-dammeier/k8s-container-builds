@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: trivy-scan
+spec:
+  params:
+    - name: image
+      description: The image to scan
+      type: string
+  steps:
+    - name: scan
+      image: aquasec/trivy:0.69.3
+      env:
+        - name: TRIVY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_USERNAME
+        - name: TRIVY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_PASSWORD
+      script: |
+        #!/bin/sh
+        set -e
+        echo "Scanning image $(params.image) for CRITICAL vulnerabilities..."
+        # We use --exit-code 1 to fail the pipeline step if criticals are found
+        # --ignore-unfixed matches the behavior in your Jenkinsfile
+        trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed "$(params.image)"
+        echo "✅ Scan completed, no critical vulnerabilities found."

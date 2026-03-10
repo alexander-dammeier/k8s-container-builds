@@ -44,3 +44,11 @@ spec:
       params:
         - name: image
           value: $(params.image)
+    - name: scan-image
+      taskRef:
+        name: trivy-scan
+      runAfter:
+        - build-image
+      params:
+        - name: image
+          value: $(params.image)

@@ -26,5 +26,7 @@ spec:
         rm -rf .git
         echo "Cloning $(params.url) @ $(params.revision)..."
         git clone --branch "$(params.revision)" "$(params.url)" .
+        echo "Setting ownership to user 1000 to allow modification by subsequent tasks..."
+        chown -R 1000:1000 .
         echo "Done!"
         ls -la

@@ -3,7 +3,9 @@
 set -e
 
 echo "📦 Applying the Tekton Tasks and Pipeline..."
+kubectl apply -f maven-m2-cache-pvc.yaml -n default
 kubectl apply -f task-git-clone.yaml -n default
+kubectl apply -f task-maven-dependencies.yaml -n default
 kubectl apply -f task-maven-test.yaml -n default
 kubectl apply -f task-buildah.yaml -n default
 kubectl apply -f task-trivy-scan.yaml -n default

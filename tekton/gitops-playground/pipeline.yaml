@@ -25,14 +25,25 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-    - name: run-unit-tests
+
+    - name: download-dependencies
       taskRef:
-        name: maven-test
+        name: maven-dependencies
       runAfter:
         - fetch-repository
       workspaces:
         - name: source
           workspace: shared-workspace
+
+    - name: run-unit-tests
+      taskRef:
+        name: maven-test
+      runAfter:
+        - download-dependencies
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
     - name: build-image
       taskRef:
         name: buildah-build-push
@@ -44,6 +55,7 @@ spec:
       params:
         - name: image
           value: $(params.image)
+
     - name: scan-image
       taskRef:
         name: trivy-scan

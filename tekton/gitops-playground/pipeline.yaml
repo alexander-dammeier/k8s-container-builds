@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-gitops-playground
+spec:
+  workspaces:
+    - name: shared-workspace
+      description: Workspace shared by clone and build tasks
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: image
+      type: string
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    - name: run-unit-tests
+      taskRef:
+        name: maven-test
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: build-image
+      taskRef:
+        name: buildah-build-push
+      runAfter:
+        - run-unit-tests
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: image
+          value: $(params.image)

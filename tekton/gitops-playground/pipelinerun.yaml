@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: build-gitops-playground-run-
+spec:
+  pipelineRef:
+    name: build-gitops-playground
+  podTemplate:
+    securityContext:
+      seccompProfile:
+        type: Unconfined
+  taskRunSpecs:
+    - pipelineTaskName: build-image
+      metadata:
+        annotations:
+          container.apparmor.security.beta.kubernetes.io/step-build-and-push: unconfined
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+  params:
+    - name: git-url
+      value: "https://github.com/cloudogu/gitops-playground.git"
+    - name: git-revision
+      value: "main"
+    - name: image
+      value: "registry.cloudogu.com/lerntag/gitops-playground:latest"

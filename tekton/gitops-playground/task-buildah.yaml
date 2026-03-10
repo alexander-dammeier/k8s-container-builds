@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildah-build-push
+spec:
+  workspaces:
+    - name: source
+      description: The workspace containing the cloned source code
+  params:
+    - name: image
+      description: Reference of the image buildah will produce.
+      type: string
+  steps:
+    - name: build-and-push
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      env:
+        - name: STORAGE_DRIVER
+          value: vfs
+        - name: BUILDAH_ISOLATION
+          value: chroot
+        - name: HOME
+          value: /home/build
+        - name: CONTAINERS_STORAGE_CONF
+          value: /var/lib/containers/storage.conf
+        - name: CONTAINERS_REGISTRIES_CONF
+          value: /var/lib/containers/registries.conf
+        - name: REGISTRY_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_SERVER
+        - name: REGISTRY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_USERNAME
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-credentials
+              key: REGISTRY_PASSWORD
+      script: |
+        #!/bin/sh
+        set -e
+        
+        cat <<EOF > /var/lib/containers/storage.conf
+        [storage]
+        driver = "vfs"
+        runroot = "/var/lib/containers/runroot"
+        graphroot = "/var/lib/containers/storage"
+        [storage.options]
+        additionalimagestores = []
+        [storage.options.vfs]
+        ignore_chown_errors = "true"
+        EOF
+
+        cat <<EOF > /var/lib/containers/registries.conf
+        unqualified-search-registries = ["docker.io", "quay.io"]
+        short-name-mode = "permissive"
+        EOF
+
+        echo "Logging into registry $REGISTRY_SERVER..."
+        buildah login -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD" "$REGISTRY_SERVER"
+        
+        echo "Building the image with Buildah..."
+        buildah bud --format=docker --isolation=chroot -t "$(params.image)" -f Dockerfile .
+        
+        echo "Pushing the image to $(params.image)..."
+        buildah push "$(params.image)"
+        
+        echo "✅ Build and push completed successfully!"
+      volumeMounts:
+        - name: buildah-storage
+          mountPath: /var/lib/containers
+  volumes:
+    - name: buildah-storage
+      emptyDir: {}

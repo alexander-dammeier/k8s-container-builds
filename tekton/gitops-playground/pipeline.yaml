@@ -13,6 +13,9 @@ spec:
       type: string
     - name: image
       type: string
+    - name: skip-tests
+      type: string
+      default: "false"
   tasks:
     - name: fetch-repository
       taskRef:
@@ -25,7 +28,6 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-
     - name: download-dependencies
       taskRef:
         name: maven-dependencies
@@ -34,10 +36,13 @@ spec:
       workspaces:
         - name: source
           workspace: shared-workspace
-
     - name: run-unit-tests
       taskRef:
         name: maven-test
+      when:
+        - input: "$(params.skip-tests)"
+          operator: in
+          values: ["false"]
       runAfter:
         - download-dependencies
       workspaces:

@@ -21,10 +21,10 @@ spec:
         # Ensure the mvnw script is executable
         chmod +x mvnw
         
-        # Run the tests (Skipped for faster pipeline development)
-        ./mvnw clean test -Dmaven.test.skip=true $MAVEN_OPTS
+        # Run the tests
+        ./mvnw test $MAVEN_OPTS
         
-        echo "✅ Unit tests skipped successfully!"
+        echo "✅ Unit tests completed successfully!"
       volumeMounts:
         - name: m2-cache
           mountPath: /m2-cache

@@ -30,3 +30,5 @@ spec:
       value: "main"
     - name: image
       value: "registry.cloudogu.com/lerntag/gitops-playground:latest"
+    - name: skip-tests
+      value: "true"

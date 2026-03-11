@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: trivy-scan
+  name: trivy-scan-petclinic
 spec:
   params:
     - name: image
@@ -30,15 +30,15 @@ spec:
         set -e
         echo "Performing full scan on $(params.image)..."
         
-        # 1. Run full scan and save to JSON for reference (optional/future use)
+        # 1. Run full scan and save to JSON
         trivy image --format json --output trivy-report.json --ignore-unfixed "$(params.image)"
         
         echo ""
         echo "==============================================================="
         echo "   CRITICAL VULNERABILITIES SUMMARY"
         echo "==============================================================="
-        # 2. Display summary of ONLY critical vulnerabilities by scanning the registry image
-        trivy image --severity CRITICAL --ignore-unfixed "$(params.image)"
+        # 2. Use 'trivy convert' to extract and display ONLY critical vulnerabilities from the JSON report
+        trivy convert --severity CRITICAL trivy-report.json
         
         echo ""
         echo "==============================================================="
@@ -46,7 +46,8 @@ spec:
         # 3. Check if we should fail the build based on the parameter
         if [ "$(params.fail-on-severity)" != "NONE" ]; then
           echo "Checking if we should fail due to $(params.fail-on-severity) vulnerabilities..."
-          trivy image --severity "$(params.fail-on-severity)" --exit-code 1 --ignore-unfixed "$(params.image)"
+          # Use 'trivy convert' for the failure check as well
+          trivy convert --severity "$(params.fail-on-severity)" --exit-code 1 trivy-report.json
         else
           echo "Skipping failure check (fail-on-severity is set to NONE)."
         fi

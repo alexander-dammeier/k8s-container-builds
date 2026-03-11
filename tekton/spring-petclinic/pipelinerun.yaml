@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: build-gitops-playground-run-
+  generateName: build-spring-petclinic-run-
 spec:
   pipelineRef:
-    name: build-gitops-playground
+    name: build-spring-petclinic
   podTemplate:
     securityContext:
       seccompProfile:
@@ -25,11 +25,11 @@ spec:
               storage: 2Gi
   params:
     - name: git-url
-      value: "https://github.com/cloudogu/gitops-playground.git"
+      value: "https://github.com/cloudogu/spring-petclinic.git"
     - name: git-revision
-      value: "main"
+      value: "feature/gitops_main"
     - name: image
-      value: "registry.cloudogu.com/lerntag/gitops-playground:latest"
+      value: "registry.cloudogu.com/lerntag/spring-petclinic:latest"
     - name: skip-tests
       value: "true"
     - name: fail-on-severity

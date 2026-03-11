@@ -1,11 +1,11 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: build-gitops-playground
+  name: build-spring-petclinic
 spec:
   workspaces:
     - name: shared-workspace
-      description: Workspace shared by clone and build tasks
+      description: Workspace shared by all tasks
   params:
     - name: git-url
       type: string
@@ -19,10 +19,13 @@ spec:
     - name: fail-on-severity
       type: string
       default: "NONE"
+    - name: extra-files-configmap
+      type: string
+      default: "spring-petclinic-extra-files"
   tasks:
     - name: fetch-repository
       taskRef:
-        name: git-clone
+        name: git-clone-petclinic
       workspaces:
         - name: output
           workspace: shared-workspace
@@ -31,42 +34,34 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-    - name: download-dependencies
-      taskRef:
-        name: maven-dependencies
-      runAfter:
-        - fetch-repository
-      workspaces:
-        - name: source
-          workspace: shared-workspace
+        - name: extra-files-configmap
+          value: $(params.extra-files-configmap)
     - name: run-unit-tests
       taskRef:
-        name: maven-test
+        name: maven-test-petclinic
       when:
         - input: "$(params.skip-tests)"
           operator: in
           values: ["false"]
       runAfter:
-        - download-dependencies
+        - fetch-repository
       workspaces:
         - name: source
           workspace: shared-workspace
-
     - name: build-image
       taskRef:
-        name: buildah-gitops-playground
+        name: buildah-spring-petclinic
       runAfter:
-        - run-unit-tests
+        - fetch-repository
       workspaces:
         - name: source
           workspace: shared-workspace
       params:
         - name: image
           value: $(params.image)
-
     - name: scan-image
       taskRef:
-        name: trivy-scan
+        name: trivy-scan-petclinic
       runAfter:
         - build-image
       params:

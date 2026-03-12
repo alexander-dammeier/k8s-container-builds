@@ -66,10 +66,6 @@ spec:
         echo "Logging into registry $REGISTRY_SERVER..."
         buildah login -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD" "$REGISTRY_SERVER"
         
-        echo "Preparing local build context..."
-        # If .m2 exists from previous tasks, we could use it, but since we removed the shared cache,
-        # we'll let the Dockerfile handle it normally or use what was downloaded in this run.
-        
         echo "Allowlisting essential files in .dockerignore..."
         if [ ! -f .dockerignore ]; then
           echo "*" > .dockerignore
